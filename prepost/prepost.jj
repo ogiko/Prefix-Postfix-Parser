@@ -1,0 +1,113 @@
+options {
+  DEBUG_PARSER = false;
+}
+
+PARSER_BEGIN(PrePostParser)
+class PrePostParser {
+  public static void main (String args[]) throws ParseException {
+    PrePostParser pr = new PrePostParser(System.in);
+    Exp e = pr.Parser();
+    System.out.println("Exp:\n" + e);
+	
+	 PrePostVisitor ev = new PrePostVisitor();
+    System.out.println("Result: " + ev.visit(e));
+  }
+}
+PARSER_END(PrePostParser)
+
+/*
+E -> U V
+U -> R U num
+U -> num
+V -> num V R
+V ->
+R -> "+"
+R -> "-"
+R -> "*"
+R -> "/"
+R -> "^"
+*/
+
+TOKEN : {
+   < PLUS : "+" >
+ | < MINUS : "-" >
+ | < TIMES : "*" >
+ | < DIVIDE : "/" >
+ | < POWER : "^" >
+ | < NUM : (["0"-"9"])+ >
+ | < EOL : "\r\n" >
+}
+
+SKIP: {
+  " " | "\t" | "\n" | "\r"
+}
+
+Exp Parser():
+{ Exp e; }
+{
+ e=E() (<EOL> | <EOF>)
+ { return e; }
+}
+
+//E -> U V
+Exp E():
+{ Exp e; }
+{
+ e=U() e=V(e) { return e; }
+}
+
+/*
+U -> R U num
+U -> num
+*/
+Exp U():
+{ Token t; Exp e1, e2; int k; }
+{
+   k=R() e1=U() t=<NUM>
+   {
+     e2 = new Num(Integer.parseInt(t.image));
+     if (k==0) return new Plus(e1, e2);
+     else if (k==1) return new Minus(e1, e2);
+     else if (k==2) return new Times(e1, e2);
+     else if (k==3) return new Divide(e1, e2);
+	 else if (k==4) return new Power(e1, e2);
+   }
+ | t=<NUM> { return new Num(Integer.parseInt(t.image)); }
+}
+
+/*
+V -> num V R
+V ->
+*/
+Exp V(Exp e1):
+{ Token t; Exp e2; int k; }
+{
+ (
+   t=<NUM> { e2 = new Num(Integer.parseInt(t.image)); } e2=V(e2) k=R()
+   {
+     if (k==0) return new Plus(e1, e2);
+     else if (k==1) return new Minus(e1, e2);
+     else if (k==2) return new Times(e1, e2);
+     else if (k==3) return new Divide(e1, e2);
+	 else if (k==4) return new Power(e1, e2);
+   }
+ )?
+ { return e1; }
+}
+
+/*
+R -> "+"
+R -> "-"
+R -> "*"
+R -> "/"
+R -> "^"
+*/
+int R():
+{ }
+{
+   <PLUS>   { return 0; }
+ | <MINUS>  { return 1; }
+ | <TIMES>  { return 2; }
+ | <DIVIDE> { return 3; }
+ | <POWER>  { return 4; }
+}
